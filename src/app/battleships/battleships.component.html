@@ -1,0 +1,70 @@
+<div style="display: flex; justify-content: space-evenly">
+  <div>
+    <div>
+      <h3 style="text-align: center">
+        Наш Флот
+      </h3>
+    </div>
+    <div class="field">
+      <div style="display: flex" *ngFor="let row of myField ">
+        <div class="fieldCells" *ngFor="let cell of row.cells">
+          <div [ngClass]="{'notAvailableForDeployment': !checkIsCellAvailableForDeployment(cell)}" (click)="tryToPutVessel(cell)" style="width: 100%; height: 100%">
+            <span style="width: 100%; height: 100%" *ngIf="cell.isShip">S</span>
+            <span style="width: 100%; height: 100%" *ngIf="cell.isChecked">.</span>
+            <span style="width: 100%; height: 100%" *ngIf="cell.isChecked && cell.isShip">X</span>
+            <span style="width: 100%; height: 100%" *ngIf="cell.isNearVessel && !cell.isShip">.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div *ngIf="currentState === 'plan'">
+    <div>
+      <h3>Суда в резерве</h3>
+      <div *ngIf="readyToStart">
+        <button (click)="startFight()" mat-raised-button>Начать игру</button>
+      </div>
+      <div *ngFor="let vessels of myReserveVessels">
+        <div class="vesselRowInReserve" *ngIf="vessels === 4">
+          <span class="vesselInReserve"></span>
+          <span class="vesselInReserve"></span>
+          <span class="vesselInReserve"></span>
+          <span class="vesselInReserve"></span>
+        </div>
+        <div class="vesselRowInReserve" *ngIf="vessels === 3">
+          <div class="vesselInReserve"></div>
+          <div class="vesselInReserve"></div>
+          <div class="vesselInReserve"></div>
+        </div>
+        <div class="vesselRowInReserve" *ngIf="vessels === 2">
+          <div class="vesselInReserve"></div>
+          <div class="vesselInReserve"></div>
+        </div>
+        <div class="vesselRowInReserve" *ngIf="vessels === 1">
+          <div class="vesselInReserve"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="currentState === 'fight'">
+    <div>
+      <h3 style="text-align: center">
+        Вражеский флот
+      </h3>
+      <div class="field">
+        <div style="display: flex" *ngFor="let row of enemyField">
+          <div class="fieldCells" *ngFor="let cell of row.cells">
+            <div (click)="tryToShoot(cell)" style="width: 100%; height: 100%">
+              <span style="width: 100%; height: 100%" *ngIf="cell.isChecked">.</span>
+              <span style="width: 100%; height: 100%" *ngIf="cell.isChecked && cell.isShip">X</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

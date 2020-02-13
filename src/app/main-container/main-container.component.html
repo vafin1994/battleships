@@ -1,0 +1,7 @@
+<h3 style="text-align: center; margin: 0">Выберите игру</h3>
+
+<app-games-list></app-games-list>
+<div *ngIf="gamesService.selectedGame">
+  {{gamesService.selectedGame| json}}
+</div>
+<app-battleships></app-battleships>
