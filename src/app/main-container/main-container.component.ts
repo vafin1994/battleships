@@ -13,7 +13,7 @@ export class MainContainerComponent implements OnInit {
   commandToServer = '';
   params: any;
 
-  constructor(private route: ActivatedRoute, private socket: SocketService, private gamesService: GamesService) {
+  constructor(private route: ActivatedRoute, private socket: SocketService, public gamesService: GamesService) {
     console.log('New frame called');
     this.route.queryParams.subscribe(params => {
       this.params = params;

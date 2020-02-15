@@ -7,7 +7,6 @@ import {AppRoutingModule} from './app-routing.module';
 import {BattleshipsComponent} from './battleships/battleships.component';
 import {SocketService} from './socket.service';
 import {FormsModule} from '@angular/forms';
-import {GamesListComponent} from './games-list/games-list.component';
 import {VugasiConnectionService} from './vugasi-connection.service';
 import {HttpClientModule} from '@angular/common/http';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
@@ -19,7 +18,6 @@ import {MatButtonModule} from '@angular/material';
     AppComponent,
     MainContainerComponent,
     BattleshipsComponent,
-    GamesListComponent,
   ],
   imports: [
     BrowserModule,

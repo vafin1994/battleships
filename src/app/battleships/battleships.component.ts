@@ -1,5 +1,6 @@
 import {Component, OnInit} from '@angular/core';
 import {Cell, Row} from './battleshipInterface';
+import {SocketService} from '../socket.service';
 
 @Component({
   selector: 'app-battleships',
@@ -9,17 +10,15 @@ import {Cell, Row} from './battleshipInterface';
 export class BattleshipsComponent implements OnInit {
   currentState: 'plan' | 'fight' = 'plan';
 
-  readyToStart = false;
-  myField: Row[] = [];
-  enemyField: Row[] = [];
   myReserveVessels = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1];
   alreadyDeployed = 0;
   lastDeployedCoordinates: { row: number, column: number };
+  shipOrientation: '' | 'vertical' | 'horizontal' = '';
   availableCells: { row: number, column: number }[] = [];
 
-  constructor() {
-    this.createField(this.myField);
-    this.createField(this.enemyField);
+  constructor(public socket: SocketService) {
+    this.createField(this.socket.myField);
+    this.createField(this.socket.enemyField);
   }
 
   createField(field) {
@@ -33,24 +32,35 @@ export class BattleshipsComponent implements OnInit {
   }
 
   tryToPutVessel(cell: Cell) {
+    if (!this.checkIsCellAvailableForDeployment(cell)) {
+      return;
+    }
     if (cell.isShip ||
       this.myReserveVessels.length === 0 || cell.isNearVessel) {
       return;
     }
+    if (this.alreadyDeployed > 0) {
+      if (cell.row !== this.lastDeployedCoordinates.row) {
+        this.shipOrientation = 'vertical';
+      } else {
+        this.shipOrientation = 'horizontal';
+      }
+    }
     this.alreadyDeployed++;
     if (this.alreadyDeployed > 0 && this.myReserveVessels[0] > 1 && this.alreadyDeployed < this.myReserveVessels[0]) {
-      console.log('Need to check');
       this.checkNextAvailableCell(this.lastDeployedCoordinates, cell, this.myReserveVessels[0]);
     }
     this.lastDeployedCoordinates = {column: cell.column, row: cell.row};
-    this.myField[cell.row].cells[cell.column].isShip = true;
+    this.socket.cellsWithShips.push(this.lastDeployedCoordinates);
+    this.socket.myField[cell.row].cells[cell.column].isShip = true;
     if (this.alreadyDeployed === this.myReserveVessels[0]) {
+      this.shipOrientation = '';
       this.alreadyDeployed = 0;
       this.myReserveVessels.splice(0, 1);
-      this.markNearVesselCells(this.myField);
+      this.markNearVesselCells(this.socket.myField);
     }
     if (this.myReserveVessels.length === 0) {
-      this.readyToStart = true;
+      this.socket.readyToStart = true;
     }
   }
 
@@ -76,13 +86,45 @@ export class BattleshipsComponent implements OnInit {
       previousColumn = cell.row - 1;
       this.availableCells.push({column: previousColumn, row: cell.row});
     }
-    console.log(this.availableCells);
+    // TODO проверить на то, влезает ли судно горизонтально или вертикально и если не влезает, пометить ячейки
   }
 
 
-  checkIsCellAvailableForDeployment(cell) {
-    // TODO put some logic here
-    return true;
+  checkIsCellAvailableForDeployment(cell: Cell) {
+    if (!this.lastDeployedCoordinates) {
+      return true;
+    } else if (this.alreadyDeployed > 0) {
+      return this.isCellNearPreviousCell(cell);
+    } else if (this.alreadyDeployed === 0) {
+      return true;
+    }
+  }
+
+  isCellNearPreviousCell(cell: Cell) {
+    if (cell.row > this.lastDeployedCoordinates.row && cell.row + this.myReserveVessels[0] - 1 - this.alreadyDeployed > 9 ||
+      cell.row < this.lastDeployedCoordinates.row && cell.row - this.myReserveVessels[0] + 1 + this.alreadyDeployed < 0 ||
+      cell.column > this.lastDeployedCoordinates.column && cell.column + this.myReserveVessels[0] - 1 - this.alreadyDeployed > 9 ||
+      cell.column < this.lastDeployedCoordinates.column && cell.column - this.myReserveVessels[0] + 1 + this.alreadyDeployed < 0) {
+      return false;
+    }
+    if (cell.row === this.lastDeployedCoordinates.row + 1 && cell.column === this.lastDeployedCoordinates.column
+      || cell.row === this.lastDeployedCoordinates.row - 1 && cell.column === this.lastDeployedCoordinates.column
+      || cell.column === this.lastDeployedCoordinates.column + 1 && cell.row === this.lastDeployedCoordinates.row
+      || cell.column === this.lastDeployedCoordinates.column - 1 && cell.row === this.lastDeployedCoordinates.row) {
+      if (this.shipOrientation === 'vertical' && cell.row === this.lastDeployedCoordinates.row
+        || this.shipOrientation === 'horizontal' && cell.column === this.lastDeployedCoordinates.column) {
+        return false;
+      } else {
+        if (cell.isShip || cell.isNearVessel) {
+          return false;
+        } else {
+          return true;
+        }
+      }
+
+    } else {
+      return false;
+    }
   }
 
   markNearVesselCells(field: Row[]) {
@@ -121,13 +163,25 @@ export class BattleshipsComponent implements OnInit {
 
 
   tryToShoot(cell: Cell) {
-    console.log(cell);
-    this.enemyField[cell.row].cells[cell.column].isChecked = true;
+    if (this.socket.isMyTurn) {
+      this.socket.sendGameMove(JSON.stringify(cell));
+      this.socket.enemyField[cell.row].cells[cell.column].isChecked = true;
+    } else {
+      return;
+    }
   }
 
   startFight() {
-    // TODO send that you ready to fight
+    this.socket.myDice = Math.floor(Math.random() * 6);
+    if (this.socket.isEnemyReady) {
+      this.socket.isMyTurn = this.socket.myDice > this.socket.enemyDice;
+    }
+    this.socket.sendGameMove(JSON.stringify({state: 'ready', dice: this.socket.myDice}));
     this.currentState = 'fight';
+  }
+
+  sendMessageToUser() {
+    this.socket.sendMessageToUser('test');
   }
 
   ngOnInit() {
